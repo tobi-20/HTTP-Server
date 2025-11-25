@@ -13,33 +13,46 @@ func main() {
 	if err != nil {
 		panic(err)
 	}
-	defer f.Close()
 
-	buff := make([]byte, 8)
-	currentLineContents := ""
+	linesChan := getLinesChannel(f)
 
-	for {
-		n, err := f.Read(buff)
-
-		if err != nil {
-			if currentLineContents != "" {
-				fmt.Printf("read: %s\n", currentLineContents)
-				currentLineContents = ""
-			}
-			if err == io.EOF {
-				break
-			}
-			fmt.Printf("error: %s\n", err.Error())
-			break
-		}
-
-		str := string(buff[:n])
-		parts := strings.Split(str, "\n")
-		for i := 0; i < len(parts)-1; i++ {
-			fmt.Printf("read: %s%s\n", currentLineContents, parts[i])
-			currentLineContents = ""
-		}
-		currentLineContents += parts[len(parts)-1]
+	for line := range linesChan {
+		fmt.Println("read:", line)
 	}
 
+}
+func getLinesChannel(f io.ReadCloser) <-chan string {
+	ch := make(chan string)
+
+	go func() {
+		defer f.Close()
+		defer close(ch)
+		currentLineContents := ""
+		buff := make([]byte, 8)
+
+		for {
+			n, err := f.Read(buff)
+
+			if err != nil {
+				if currentLineContents != "" {
+					ch <- currentLineContents
+				}
+				if err == io.EOF {
+					break
+				}
+				fmt.Printf("error: %s\n", err.Error())
+				break
+			}
+
+			str := string(buff[:n])
+			parts := strings.Split(str, "\n")
+			for i := 0; i < len(parts)-1; i++ {
+				ch <- currentLineContents + parts[i]
+				currentLineContents = ""
+			}
+			currentLineContents += parts[len(parts)-1]
+		}
+
+	}()
+	return ch
 }
