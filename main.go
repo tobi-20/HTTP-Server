@@ -8,7 +8,7 @@ import (
 )
 
 func main() {
-	const file = `C:\Users\Lawrence Oluwadare's\Desktop\PRIME\messages.txt`
+	const file = `~\Desktop\PRIME\messages.txt`
 	f, err := os.Open(file)
 	if err != nil {
 		panic(err)
@@ -56,3 +56,4 @@ func getLinesChannel(f io.ReadCloser) <-chan string {
 	}()
 	return ch
 }
+
