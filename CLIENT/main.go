@@ -2,6 +2,7 @@ package main
 
 import (
 	"fmt"
+	"io"
 	"log"
 	"net"
 )
@@ -11,9 +12,30 @@ func main() {
 	if err != nil {
 		log.Fatal(err)
 	}
-	buf := make([]byte, 1024)
-	n, err := conn.Read(buf)
-	received := string(buf[:n])
-	fmt.Println(received)
 	defer conn.Close()
+
+	go func() {
+		str := "Client here, Hola papi"
+		clientMessage := []byte(str)
+		if _, err := conn.Write(clientMessage); err != nil {
+			fmt.Println(err)
+		}
+
+	}()
+	buf := make([]byte, 3)
+	for {
+		n, err := conn.Read(buf)
+		if err != nil {
+			if err == io.EOF {
+				fmt.Println("Connection ended")
+				break
+			} else {
+				fmt.Println(err)
+			}
+
+		}
+		received := string(buf[:n])
+		fmt.Println(received)
+
+	}
 }
