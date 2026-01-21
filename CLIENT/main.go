@@ -13,29 +13,36 @@ func main() {
 		log.Fatal(err)
 	}
 	defer conn.Close()
+	sentChan := make(chan []byte, 1024)
+	str := "Client here, Hola papi"
+	clientMessage := []byte(str)
+
+	sentChan <- clientMessage
 
 	go func() {
-		str := "Client here, Hola papi"
-		clientMessage := []byte(str)
-		if _, err := conn.Write(clientMessage); err != nil {
-			fmt.Println(err)
+		buf := make([]byte, 1024)
+		for {
+			n, err := conn.Read(buf)
+			if err != nil {
+				if err == io.EOF {
+					fmt.Println("Connection ended")
+					close(sentChan)
+				} else {
+					fmt.Println(err)
+				}
+
+			}
+			received := string(buf[:n])
+			fmt.Println("Server replied:", received)
+
 		}
 
 	}()
-	buf := make([]byte, 3)
-	for {
-		n, err := conn.Read(buf)
-		if err != nil {
-			if err == io.EOF {
-				fmt.Println("Connection ended")
-				break
-			} else {
-				fmt.Println(err)
-			}
+	for m := range sentChan {
 
+		if _, err := conn.Write(m); err != nil {
+			fmt.Println(err)
 		}
-		received := string(buf[:n])
-		fmt.Println(received)
-
 	}
+	conn.Close()
 }

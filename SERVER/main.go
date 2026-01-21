@@ -21,29 +21,42 @@ func main() {
 			fmt.Println(err)
 			continue
 		}
-		go handleWrite(conn)
+		writeChan := make(chan []byte, 1024)
+		go handleWrite(conn, writeChan)
 		//Read
-		buf := make([]byte, 5)
-		for {
-			if n, err := conn.Read(buf); err != nil {
-				if err == io.EOF {
-					fmt.Println("End of message")
+		buf := make([]byte, 100)
+
+		go func() {
+			for {
+				if n, err := conn.Read(buf); err != nil {
+					if err == io.EOF {
+						fmt.Println("End of message")
+						close(writeChan)
+						break
+					}
+					fmt.Println(err)
 					break
+				} else {
+					fmt.Println("Client sent:", string(buf[:n]))
 				}
-				fmt.Println(err)
-				break
-			} else {
-				fmt.Println("Client message:", string(buf[:n]))
 			}
-		}
+		}()
 	}
 }
-func handleWrite(conn net.Conn) {
-	defer conn.Close()
+func handleWrite(conn net.Conn, writeChan chan []byte) {
 
 	//Write
 	str := "Hi this is Lord Gboyega's Server"
 	message := []byte(str)
-	conn.Write(message)
+	writeChan <- message
+
+	for m := range writeChan {
+		if _, err := conn.Write(m); err != nil {
+
+			fmt.Println(err)
+		}
+
+	}
+	conn.Close()
 
 }
