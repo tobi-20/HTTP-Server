@@ -1,10 +1,13 @@
 package main
 
 import (
+	"bufio"
 	"fmt"
 	"io"
 	"log"
 	"net"
+	"os"
+	"path/filepath"
 )
 
 func main() {
@@ -13,30 +16,35 @@ func main() {
 		log.Fatal(err)
 	}
 	defer conn.Close()
-	sentChan := make(chan []byte, 1024)
-	str := "Client here, Hola papi"
-	clientMessage := []byte(str)
 
-	sentChan <- clientMessage
+	path := filepath.Join("data", "Renegade.txt")
+	f, err := os.Open(path)
+	if err != nil {
+		log.Fatal(err)
+	}
+	reader := bufio.NewReader(f)
+
+	sentChan := make(chan []byte, 1024)
 
 	go func() {
-		buf := make([]byte, 1024)
+		defer close(sentChan)
 		for {
-			n, err := conn.Read(buf)
-			if err != nil {
-				if err == io.EOF {
-					fmt.Println("Connection ended")
-					close(sentChan)
-				} else {
-					fmt.Println(err)
+			lines, err := reader.ReadBytes('\n')
+
+			if err == io.EOF {
+				if len(lines) > 0 {
+					sentChan <- lines
+
 				}
+				return
 
 			}
-			received := string(buf[:n])
-			fmt.Println("Server replied:", received)
+			if err != nil {
+				fmt.Println(err)
+			}
+			sentChan <- lines
 
 		}
-
 	}()
 	for m := range sentChan {
 
@@ -44,5 +52,5 @@ func main() {
 			fmt.Println(err)
 		}
 	}
-	conn.Close()
+
 }

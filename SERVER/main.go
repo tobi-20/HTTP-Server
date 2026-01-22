@@ -1,6 +1,7 @@
 package main
 
 import (
+	"bufio"
 	"fmt"
 	"io"
 	"log"
@@ -21,42 +22,38 @@ func main() {
 			fmt.Println(err)
 			continue
 		}
+
 		writeChan := make(chan []byte, 1024)
 		go handleWrite(conn, writeChan)
 		//Read
-		buf := make([]byte, 100)
+
+		reader := bufio.NewReader(conn)
 
 		go func() {
+			defer close(writeChan)
 			for {
-				if n, err := conn.Read(buf); err != nil {
-					if err == io.EOF {
-						fmt.Println("End of message")
-						close(writeChan)
-						break
+				lines, err := reader.ReadBytes('\n')
+				if err == io.EOF {
+					if len(lines) > 0 {
+						writeChan <- lines
 					}
-					fmt.Println(err)
-					break
-				} else {
-					fmt.Println("Client sent:", string(buf[:n]))
+					return
 				}
+
+				if err != nil {
+					fmt.Println(err)
+					return
+				}
+				writeChan <- lines
 			}
 		}()
 	}
 }
 func handleWrite(conn net.Conn, writeChan chan []byte) {
-
-	//Write
-	str := "Hi this is Lord Gboyega's Server"
-	message := []byte(str)
-	writeChan <- message
-
+	defer conn.Close()
 	for m := range writeChan {
-		if _, err := conn.Write(m); err != nil {
-
-			fmt.Println(err)
-		}
+		fmt.Println(string(m))
 
 	}
-	conn.Close()
 
 }
