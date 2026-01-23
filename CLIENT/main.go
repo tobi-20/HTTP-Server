@@ -11,7 +11,7 @@ import (
 )
 
 func main() {
-	conn, err := net.Dial("tcp", "localhost:2000")
+	conn, err := net.Dial("tcp", "localhost:2000") // The client dials the listening server here
 	if err != nil {
 		log.Fatal(err)
 	}
@@ -23,7 +23,7 @@ func main() {
 		log.Fatal(err)
 	}
 	reader := bufio.NewReader(f)
-
+	defer f.Close()
 	sentChan := make(chan []byte, 1024)
 
 	go func() {
@@ -41,6 +41,7 @@ func main() {
 			}
 			if err != nil {
 				fmt.Println(err)
+				return
 			}
 			sentChan <- lines
 
@@ -52,5 +53,6 @@ func main() {
 			fmt.Println(err)
 		}
 	}
+	conn.(*net.TCPConn).CloseWrite()
 
 }
